@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>ElipseLab</title>
+
+<style>
+  :root {
+    --bg:#ffffff; --panel:#f8fafc; --ink:#0f172a; --muted:#000000;
+    --axis: var(--ellipse); --circs:#000000; --faint:#818181;
+    --ellipse:#2563eb; --foci: var(--ellipse); --border:#e2e8f0; --surface:#ffffff;
+    --label:#515152;
+    --accent: var(--ellipse);
+    --accent2:#dc2626;
+  }
+  @media (prefers-color-scheme: dark){
+    :root { --label:#e5e7eb; }
+  }
+
+  html, body { height:100%; margin:0; }
+  body {
+    display:grid; grid-template-columns:260px 1fr 280px;
+    height:100vh; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,sans-serif; overflow:hidden;
+  }
+
+  .side-panel {
+    padding:20px; background:var(--panel); overflow-y:auto;
+    height:100vh; min-width:240px; box-sizing:border-box;
+  }
+  #panel-left  { border-right:1px solid var(--border); }
+  #panel-right { border-left:1px solid var(--border); }
+
+  #stage { background:var(--bg); position:relative; cursor:crosshair; min-width:0; overflow:hidden; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; }
+
+  /* BOTONES DE MODELO */
+  .mode-btn {
+    width:100%; text-align:left; padding:6px 10px; margin-bottom:6px;
+    background:transparent; border:none; border-radius:999px; cursor:pointer;
+    font-size:0.82rem; color:var(--muted); transition:all 0.1s ease;
+    display:flex; align-items:center; gap:8px;
+    position: relative;
+  }
+
+  .mode-btn:hover { background: rgba(37,99,235,0.08); color: var(--ink); }
+  .mode-btn.active { background: rgba(37,99,235,0.12); color: var(--ink); font-weight: 600; }
+
+  /* Punto indicador */
+  .mode-btn::before { content: "•"; font-size: 1.2rem; color: transparent; line-height: 0; }
+  .mode-btn.active::before { color: var(--accent); }
+
+  .pill-btn { border:1px solid var(--border); padding:8px 12px; font-weight:600; }
+  .pill-btn::before { color:var(--accent); }
+  .pill-accent::before { color:var(--accent2); }
+  .pill-accent:hover { background:rgba(220,38,38,0.08); }
+
+  .stats-box {
+    background:var(--surface); padding:12px; border-radius:8px;
+    border:1px solid var(--border); margin-bottom:20px; font-size:0.9rem;
+  }
+  .control-group { margin-bottom:1.25rem; }
+  label { font-weight:600; font-size:0.8rem; color:var(--muted); text-transform:uppercase; display:block; margin-bottom:8px; }
+  input[type="range"] { width:100%; }
+
+  /* Track coloreado para phiSlider */
+  #phiSlider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  #phiSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  #phiSlider::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    border: 2px solid white;
+  }
+  h2 { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:1.0rem; color:var(--ink); border-bottom:1px solid var(--border); padding-bottom:8px; }
+  .hint { font-size:0.7rem; color:var(--faint); font-style:italic; margin-top:15px; }
+
+  [hidden] { display: none !important; }
+
+  /* (Opcional) Si usas data-mode para estilos contextuales */
+  body[data-mode="dandelin"] #timelineGroup { display: none !important; }
+  /* Contenedor de la fila del modo */
+  .mode-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+
+  /* Ajuste al botón para que no ocupe todo el ancho */
+  .mode-row .mode-btn {
+    flex-grow: 1;
+    margin-bottom: 0;
+  }
+  
+  .mode-btn::after {
+    content: attr(data-tooltip);
+    visibility: hidden;
+    opacity: 0;
+    width: 230px;
+    background-color: #1e293b;
+    color: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    position: fixed; /* Sigue siendo fixed para que no lo corte el panel */
+    left: 270px;      /* Siempre a la derecha del panel */
+    z-index: 99999;
+    pointer-events: none;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    transition: opacity 0.3s ease;
+    white-space: normal;
+    border-left: 4px solid #2563eb;
+  }
+
+/* Solo se muestra tras 0.6 segundos de estar el ratón encima */
+.mode-btn:hover::after {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0.6s; 
+}
+
+/* Cuando el botón tiene la clase 'show-tip', mostramos el cartel */
+.mode-btn.show-tip::after {
+  visibility: visible;
+  opacity: 1;
+  top: var(--tip-top); /* Aquí es donde ocurre la magia */
+  transition-delay: 0.5s;
+  
+}
+
+/* Contenedor del grupo */
+.layer-group {
+  position: relative;
+  margin-bottom: 10px;
+  padding-left: 15px; /* Espacio para el lomo y la línea */
+}
+
+/* El "Lomo de libro" vertical */
+.group-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px; /* Área del texto */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-label span {
+  transform: rotate(-90deg);
+  white-space: nowrap;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--faint);
+  font-weight: 500;
+  opacity: 1;
+}
+
+/* La línea vertical divisoria */
+.layer-group::after {
+  content: "";
+  position: absolute;
+  left: 28px; /* Posicionada entre el lomo y los botones */
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  background: var(--border);
+}
+
+/* Ajuste de las filas de botones */
+.mode-row {
+  margin-left: 10px;
+}
+
+/* Opcional: un sutil separador horizontal al final de la lista de capas 
+   si quieres reforzar el minimalismo de "bloques" */
+#layerStack {
+  padding-top: 10px;
+}
+/* 1. ELIMINAR EL PUNTO AZUL DEL BOTÓN DE ANÁLISIS */
+#theory-btn::before {
+  content: none !important; /* Quita el carácter "•" */
+}
+</style>
+</head>
+
+<body>
+
+  
+  <aside id="panel-left" class="side-panel">
+    <div id="layerStack"></div>
+  </aside>
+
+  <main id="stage">
+    <canvas id="c"></canvas>
+  </main>
+
+  <aside id="panel-right" class="side-panel">
+    <div class="control-group" style="margin-bottom: 20px;">
+      <button id="theory-btn" class="mode-btn pill-btn" style="width: 100%; justify-content: left; background: var(--surface); letter-spacing: 0.05em;">
+        Análisis de singularidades
+      </button>
+      
+      <div id="theory-text" hidden style="
+        margin-top: 10px; 
+        padding: 15px; 
+        background: var(--surface); 
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: serif; 
+        font-size: 0.85rem; 
+        line-height: 1.6; 
+        color: var(--ink);
+        max-height: 350px;
+        overflow-y: auto;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+      ">
+        <p style="margin-top:0">
+        <p>La circunferencia tangente a la astroide envolvente de la familia de elipses tiene diámetro a+b. La circunferencia tangente a la astroide envolvente de las normales tiene diámetro a-b.</p>
+	<p>El ángulo 2·arcsin((a-b)/(a+b)) entre las dos tangentes a la rodante La Hire desde un punto de la elipse delimita la oscilación de la normal a lo largo de la elipse</p>
+	<p>La oscilación máxima de la normal es la correspondiente a los extremos del latus rectum.</p>
+	<p>La normal a la elipse en un punto de esta bisecta el ángulo entre los dos radios focales.</p>
+	<p>Los extremos de los diámetros azules de la rodante que pasan por  los pies de tangencia desde un punto de la elipse a la rodante pertenecen a la evoluta de la elipse, coincidiendo con los puntos de tangencia de esa evoluta con la circunferencia de radio (a−b) centrada en O.</p>
+	<p>El ángulo máximo entre el diámetro mayor de la elipse y los diámetros de la circunferencia de diámetro a-b con extremos en los pies de tangencia desde un punto de la elipse a la Hire es de 45º (ε = 0). El ángulo será de 30º cuando a = 3b.</p>
+	<p>La bisectriz del nodo de articulación del antiparalelogramo es la normal de la elipse en ese punto.</p>       
+        <p>La evoluta de la elipse se puede construir como lugar de centros de curvatura (osculatrices) o como envolvente resultante de las normales.</p>
+        <p>La proporción entre ejes de evoluta de la elipse es la misma que entre a y b.</p>
+        <p>La normal oscila entre los lados del triángulo magenta (Hipotrocoide 2).</p>
+        <p>Con a = b · φ: en Rombo y directriz, eje menor del rombo = 2a, eje mayor del rombo = eje menor · φ, 2 a = latus rectum · φ</p>
+        <p>Con a = b · φ: en Rombo y directriz y osculatriz, la distancia entre cúspides superior e inferior de la astroide es el eje vertical del rombo.</p>
+	<p>Con a = b · φ: ángulo formado por las tangentes de un punto de la elipse a la Hire  = ángulo áureo/5</p>
+        <p>Con a = b · φ: las cúspides de la paralela a la elipse descrita por la normal recorren la evoluta de la elipse.</p>
+        <p>Con a = b · φ: la astroide envolvente de familia de elipses es tangente a la elipse en extremos de latus rectum.</p>
+        <p>Con a = b · φ: en Hipotrocoide 2 y Osculatriz, el diámetro de la circunferencia osculatriz es la altura del triángulo magenta.</p>
+        <p>Con a = b · φ: la circunferencia osculatriz del vértice del eje mayor tiene su centro el la cúspide derecha e izquierda.</p>
+        <p>Con a = b · φ: el eje horizontal de la evoluta mide 2b y el vertical mide 2a. Los vértices de la elipse se unen con líneas a 45º con las cúspides de la astroide envolvente de las normales.</p>
+        <p>Con a = b · φ: la hipotenusa del triángulo rectángulo de catetos a y O-directriz (es decir, (a^2)/c) es igual a la longitud de la vara del elipsógrafo de Proclo / Arquímedes.</p>
+        <p>Con a = c · φ: ε = 1/φ, ángulo formado por las tangentes de un punto de la elipse a la Hire = ángulo áureo/10</p>
+	<p>Con a = c · φ: la circunferencia osculatriz del vértice del eje mayor tiene radio = c</p>
+	<p>Con a = c · φ: je menor del rombo = 2a, eje mayor del rombo = eje menor · φ, 2 a = latus rectum · φ</p>
+        <p>Con c = b · φ: las cúspides de la curva trazada por la normal con radio a pertenecen a la vez a la evoluta de las osculatrices y a la elipse.</p>
+	<p>Con c = 2b: ángulo formado por las tangentes de un punto de la elipse a la Hire = 45°</p>
+        <p>Con a = 3b: ángulo formado por las tangentes de un punto de la elipse a la Hire  = 60°; triángulo equilátero; la elipse pasa por A y B.</p>	
+        <p>Con a = b · √2, es decir, con b = c: ε = cos 45</p>
+	<p>Con a = b · √2: la osculatriz en el vértice del eje mayor tiene radio a/2</p>
+        <p>Con a = b · √2: las cúspides superior e inferior de la evoluta distan 2b entre ellas y las cúspides izquierda y derecha distan a entre ellas.</p>
+        <p>Con a = b · √2: la proporción entre los ejes de rombo es √2. Es el único caso de igualdad de proporciones entre ambas construcciones: diámetros de la elipse y rombo.</p>     
+        <p>Con a = 1.5b: c = (4/3)a, c = ( a + b) / 2.</p>
+        <p>Con a = 1.5b, el eje horizontal de la astroide envolvente de las normales mide (a+b)/1.5 y el vertical mide a+b.</p>
+        <p>Con a = 2b: ε = cos 30. </p>
+        <p>Con a = 2b: el foco y los extremos de diámetro menor forma un triángulo equilátero.</p>
+        <p>Con a = 2b: el punto medio entre O y el foco y los extremos del latus rectum forman un triángulo equilátero.</p>
+        <p>Con a = 2b: coinciden en el mismo punto las cúspides superior e inferior de la astroide que es envolvente de la familia de elipses y la que es evoluta de la elipse, la separación entre cúspides izquierda y derecha en la que es envolvente de la familia de elipses es el doble de la separación entre cúspides izquierda y derecha en la evoluta de la elipse.</p>
+        <p>Con a = 2b: la osculatriz en el extremo del eje mayor tiene diámetro b.</p>
+        <p>Con a = 2b: el punto medio entre O y el foco y los extremos del latus rectum forman un triángulo equilátero.</p>
+      </div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 20px;">
+    <div class="control-group">
+      <label>Proporciones Singulares</label>
+      <select id="propSelect" class="mode-btn" style="width:100%; padding:8px; background:var(--surface); border:1px solid var(--border);">
+        <option value="free">Excentricidad libre</option>
+        
+        <optgroup label="a/b">
+          <option value="ab_1">a = b</option>
+          <option value="ab_1.414">a = b · √2</option>
+          <option value="ab_1.5">a = 1.5b</option>
+          <option value="ab_1.618">a = b · φ</option>
+          <option value="ab_2">a = 2b</option>
+          <option value="ab_3">a = 3b</option>
+        </optgroup>
+
+        <optgroup label="a/c">
+          <option value="ac_1.414">a = c · √2</option>
+          <option value="ac_1.5">a = 1.5c</option>
+          <option value="ac_1.618">a = c · φ</option>
+          <option value="ac_2">a = 2c (ε = 0.5)</option>
+        </optgroup>
+
+        <optgroup label="c/b">
+          <option value="cb_1.414">c = b · √2</option>
+          <option value="cb_1.5">c = 1.5b</option>
+          <option value="cb_1.618">c = b · φ</option>
+          <option value="cb_2">c = 2b</option>
+          <option value="cb_3">c = 3b</option>
+        </optgroup>
+      </select>
+    </div>
+    
+    <div class="stats-box">
+      a: <span id="aval">150</span> px<br>
+      b: <span id="bval">100</span> px<br>
+      c: <span id="cval">0</span> px<br>
+      ε: <span id="eval">0.00</span>
+
+      <!-- ⬇️ Solo para orbital -->
+      <div id="orbitalStats">
+        <hr>
+        Periodo: <span id="periodval">0</span> u.t.<br>
+        V. Máx: <span id="vmaxval">0</span> | V. Mín: <span id="vminval">0</span>
+      </div>
+    </div>
+
+    <!-- ⬇️ Solo para Dandelin: slider de semieje mayor -->
+    <div class="control-group" id="dandelinAGroup" hidden>
+      <label>Excentricidad (ε) — <span id="dandelinAVal">0.00</span></label>
+      <input type="range" id="dandelinASlider" min="0" max="0.964" step="0.001" value="0" />
+    </div>
+
+
+    <!-- ⬇️ Solo para isoperimetrica -->
+    <div id="isopStats" hidden>
+      Familia: <span id="isopN">—</span> curvas isoperimétricas<br>
+      ε = 0.000 → <span id="isopEmax">—</span>, paso <span id="isopStep">—</span>
+    </div>
+
+    <!-- ⬇️ Solo para elipse_rodante -->
+    <div class="control-group" id="erGroup" hidden>
+      <label>Tamaño rodante (k) — <span id="erKVal">0.50</span></label>
+      <input type="range" id="erK" min="0.1" max="2.0" step="0.01" value="0.5" />
+      <label style="margin-top:8px">Excentricidad rodante (ε) — <span id="erEpsVal">0.000</span></label>
+      <input type="range" id="erEps" min="0" max="0.964" step="0.001" value="0" />
+      <button id="erResetBtn" class="mode-btn" style="margin-top:8px">Reset k=1 / ε igual</button>
+    </div>
+
+    <!-- Asigno id al grupo del slider para control directo -->
+    <div class="control-group" id="timelineGroup">
+      <label>Progreso (t)</label>
+      <input type="range" id="timeline" min="0" max="1" step="any" value="1" />
+    </div>
+
+    <div class="control-group" id="phiGroup" hidden>
+      <label>
+        Ángulo guía oblicua (φ) — <span id="phiVal">90</span>°
+        <span id="phiMinLabel" style="font-weight:400;margin-left:6px;">(rango válido: <span id="phiMinVal">—</span>° – <span id="phiMaxVal">—</span>°)</span>
+      </label>
+      <input type="range" id="phiSlider" min="5" max="175" step="1" value="90" />
+    </div>
+
+    <div class="control-group" id="spacingGroup">
+      <label>Espaciado de trazo</label>
+      <input type="range" id="spacing" min="0.05" max="2.50" step="0.05" value="0.80" />
+    </div>
+
+    <div class="control-group">
+      <button id="showAxesBtn" class="mode-btn">Diámetros</button>
+    </div>
+
+    <div class="control-group" id="trailsGroup">
+      <button id="showTrailsBtn" class="mode-btn">Rastros</button>
+    </div>
+
+    <!-- Botón Mostrar/Ocultar Focos -->
+    <div class="control-group" id="fociGroup">
+      <button id="showFociBtn" class="mode-btn">Focos</button>
+    </div>
+
+    <div class="control-group" id="retiradosGroup" hidden>
+      <button id="showHiddenBtn" class="mode-btn">Elementos retirados</button>
+    </div>
+
+    <button id="resetBtn" class="mode-btn pill-btn pill-accent">
+      Reset Vista
+    </button>
+  </aside>
+
+  <!-- Núcleo y modos -->
+  <script src="./js/core.js"></script>
+
+  <script src="./modes/2focales_mode.js"></script>
+  <script src="./modes/jardinero_mode.js"></script>
+  <script src="./modes/envolvente_mode.js"></script>
+  <script src="./modes/orbital_mode.js"></script>
+  <script src="./modes/rombo_directriz_mode.js"></script>
+  <script src="./modes/excentricidad_mode.js"></script>
+  <script src="./modes/haces_proyectivos_mode.js"></script>
+  <script src="./modes/haces_proyectivos_steiner_mode.js"></script>
+  <script src="./modes/van_schooten_mode.js"></script>
+  <script src="./modes/afinidad_mode.js"></script>
+  <script src="./modes/hipotrocoide2_mode.js"></script>
+  <script src="./modes/guiado_oblicuo_proclo_mode.js"></script>
+  <script src="./modes/hipotrocoide1_mode.js"></script>
+  <script src="./modes/antiparalelogramo_mode.js"></script>
+  <script src="./modes/focal_mode.js"></script>
+  <script src="./modes/delaunay_horiz_mode.js"></script>
+  <script src="./modes/delaunay_vert_mode.js"></script>
+  <script src="./modes/circulos_mode.js"></script>
+  <script src="./modes/dandelin_mode.js"></script>
+  <script src="./modes/circunferencia_afin_mode.js"></script>
+  <script src="./modes/conjugados_mode.js"></script>
+  <script src="./modes/arquimedes_3_mode.js"></script>
+  <script src="./modes/cuadrado_mode.js"></script>
+  <script src="./modes/fowler_mode.js"></script>
+  <script src="./modes/kopp_mode.js"></script>
+  <script src="./modes/elipse_rodante_mode.js"></script>
+  <script src="./modes/osculatriz_mode.js"></script>
+  <script src="./modes/guiado_ortogonal_mode.js"></script>
+  <script src="./modes/waves_mode.js"></script>
+  <script src="./modes/isoperimetrica_mode.js"></script>
+  <script src="./modes/astroide_envolvente_mode.js"></script>
+  <script src="./modes/astroide_hipocicloide_mode.js"></script>
+  <script src="./modes/brianchon_mode.js"></script>
+  <script src="./modes/pascal_mode.js"></script>
+  <script src="./modes/steiner_circunelipse_mode.js"></script>
+  <script src="./modes/steiner_inelipse_mode.js"></script>
+  <script src="./modes/proporcion_latus_mode.js"></script>
+  <script src="./modes/evolvente_mode.js"></script>
+  <script src="./modes/guiado_oblicuo_davinci_mode.js"></script>
+
+  <script>
+    (function(){
+      const cv  = document.getElementById('c');
+      const lab = window.ElipseLab;
+      if(!lab) return;
+
+      const fallback = lab.enableFallbackDraw(cv);
+      const redraw   = () => fallback.redraw();
+
+      const modesRequiringSpacing = new Set([
+        'waves', 'envolvente', 'orbital', 'haces_proyectivos', 'jardinero',
+        'haces_proyectivos_steiner', 'afinidad', 'focal', '2focales', 'circulos',
+        'circunferencia_afin', 'conjugados', 'isoperimetrica'
+      ]);
+
+      function getActiveModeIds() {
+        const st = lab.state || {};
+        if (Array.isArray(st.activeLayers) && st.activeLayers.length) return st.activeLayers.slice();
+        return st.mode ? [st.mode] : [];
+      }
+
+      function refreshControlsVisibility(debug=false) {
+        const spacingGroup  = document.getElementById('spacingGroup');
+        const trailsGroup   = document.getElementById('trailsGroup');
+        const phiGroup      = document.getElementById('phiGroup');
+        const showAxesBtn   = document.getElementById('showAxesBtn');
+        const fociGroup     = document.getElementById('fociGroup');
+        const retiradosGroup = document.getElementById('retiradosGroup');
+
+        // NUEVO: bloque de estadísticas de orbital
+        const orbitalStats  = document.getElementById('orbitalStats');
+
+        // timelineGroup directo por id; si falta, intentar por closest()
+        let timelineGroup = document.getElementById('timelineGroup');
+        if (!timelineGroup) {
+          const tl = document.getElementById('timeline');
+          timelineGroup = tl ? tl.closest('.control-group') : null;
+          if (timelineGroup && !timelineGroup.id) timelineGroup.id = 'timelineGroup';
+        }
+
+        const active = getActiveModeIds();
+        const shouldShow = active.some(id => modesRequiringSpacing.has(id));
+        const soloOblicuo = active.length === 1 && active[0] === 'guias_oblicuas_int';
+
+        if (spacingGroup) spacingGroup.hidden = !shouldShow;
+        if (trailsGroup)  trailsGroup.hidden  = !shouldShow;
+        if (retiradosGroup) {
+          retiradosGroup.hidden = !active.includes('guiado_ortogonal');
+        }
+                    
+        const hideAxesBtnForCuadradoIsolated = (active.length === 1 && active[0] === 'cuadrado');
+        const hideAxesBtnForProcloIso        = (active.length === 1 && active[0] === 'proclo-arquimedes'); // ⟵ NUEVO
+        const suppressAxesBtnModes = new Set(['haces_proyectivos', 'haces_proyectivos_steiner']);
+        const containsSuppressed = active.some(id => suppressAxesBtnModes.has(id));
+
+        if (showAxesBtn) {
+          // Ocultar si: oblicuo aislado, cuadrado aislado, proclo-arquimedes aislado, o algún modo que lo suprima
+          showAxesBtn.hidden = soloOblicuo || hideAxesBtnForCuadradoIsolated || hideAxesBtnForProcloIso || containsSuppressed;
+        }
+
+        if (fociGroup) {
+          fociGroup.hidden = !active.some(id => (
+            id === 'afinidad' || 
+            id === 'arquimedes_3' ||
+            id === 'astroide_envolvente' ||
+            id === 'astroide_hipocicloide' ||
+            id === 'brianchon' ||
+            id === 'cuadrado' ||
+            id === 'circunferencia_afin' || 
+            id === 'delaunay_horiz' || 
+            id === 'delaunay_vert' ||
+            id === 'elipse_rodante' ||
+            id === 'conjugados' || 
+            id === 'fowler' ||
+            id === 'guiado_oblicuo_proclo' ||
+            id === 'guiado_ortogonal' ||
+            id === 'haces_proyectivos' ||
+            id === 'haces_proyectivos_steiner' ||
+            id === 'hipotrocoide1' ||
+            id === 'hipotrocoide2' ||
+            id === 'isoperimetrica' ||
+            id === 'cuadrado' ||
+            id === 'kopp' ||
+            id === 'pascal' ||
+            id === 'steiner_circunelipse' ||
+            id === 'steiner_inelipse' ||
+            id === 'proporcion_latus' ||
+            id === 'guiado_oblicuo_davinci'                 
+          ));
+        }
+
+        // Ocultación del slider progreso
+        // 1. Definimos la lista de modos que son puramente estáticos
+        const modosEstaticos = [
+          'dandelin', 
+          'isoperimetrica', 
+          'steiner_circunelipse', 
+          'steiner_inelipse', 
+          'brianchon', 
+          'pascal', 
+          'proporcion_latus'
+        ];
+
+        if (timelineGroup) {
+          // 2. Comprobamos si TODOS los modos que están seleccionados ahora son estáticos
+          // Si hay al menos uno que NO esté en la lista, soloEstaticos será false.
+          const soloEstaticos = active.every(id => modosEstaticos.includes(id));
+
+          // 3. Ocultamos el slider solo si no hay nada animado que mostrar
+          timelineGroup.hidden = soloEstaticos;
+
+          // 4. Forzamos t=1 solo cuando estamos en modo puramente estático
+          // Esto evita que 'proporcion_latus' rompa la animación de 'fowler' al superponerlos.
+          if (soloEstaticos) {
+            if (lab.state.t !== 1) { 
+              lab.state.t = 1; 
+              lab.syncPanel(); 
+            }
+          }
+        }
+
+        // MOSTRAR SOLO EN ORBITAL: periodo y velocidades
+        if (orbitalStats) {
+          const containsOrbital = active.some(id => id === 'orbital');
+          orbitalStats.hidden = !containsOrbital;
+        }
+
+        // MOSTRAR SOLO EN ISOPERIMÉTRICAS
+        const isopStats = document.getElementById('isopStats');
+        if (isopStats) {
+          const containsIsop = active.some(id => id === 'isoperimetrica');
+          isopStats.hidden = !containsIsop;
+          if (containsIsop) {
+            const sRaw = lab.state.spacing ?? 0.80;
+            const minN = 3, maxN = 40, minS = 0.05, maxS = 2.50;
+            const nElipses = Math.max(minN, Math.min(maxN,
+              Math.round(maxN - ((sRaw - minS) / (maxS - minS)) * (maxN - minN))
+            ));
+            const eMax = 0.999;
+            const paso = eMax / nElipses;
+            document.getElementById('isopN').textContent    = nElipses;
+            document.getElementById('isopEmax').textContent = eMax.toFixed(3);
+            document.getElementById('isopStep').textContent = paso.toFixed(3);
+          }
+        }
+
+        // SLIDERS PARA ELIPSE RODANTE
+        const erGroup = document.getElementById('erGroup');
+        if (erGroup) {
+          const containsEr = active.some(id => id === 'elipse_rodante');
+          erGroup.hidden = !containsEr;
+          if (containsEr) {
+            const eps = Math.sqrt(Math.max(0, 1 - (lab.state.b * lab.state.b) / (lab.state.a * lab.state.a)));
+            if (!lab.state._erUserTouched) {
+              document.getElementById('erK').value = 1.0;
+              document.getElementById('erKVal').textContent = '1.00';
+              document.getElementById('erEps').value = eps;
+              document.getElementById('erEpsVal').textContent = eps.toFixed(3);
+            }
+          }
+        }
+
+        // SLIDER DE 'a' PARA DANDELIN
+        const dandelinAGroup  = document.getElementById('dandelinAGroup');
+        const dandelinAValSpan = document.getElementById('dandelinAVal');
+        if (dandelinAGroup) {
+          const containsDandelin = active.some(id => id === 'dandelin');
+          dandelinAGroup.hidden = !containsDandelin;
+          if (containsDandelin && dandelinAValSpan) {
+            const eps = Math.sqrt(Math.max(0, 1 - (lab.state.b * lab.state.b) / (lab.state.a * lab.state.a)));
+            dandelinAValSpan.textContent = eps.toFixed(3);
+            document.getElementById('dandelinASlider').value = eps;
+          }
+        }
+
+        // (Opcional) reflejar primer modo activo en data-mode para CSS contextual
+        if (active.length === 1) {
+          document.body.dataset.mode = active[0];
+        } else {
+          delete document.body.dataset.mode;
+        }
+
+        if (debug) {
+          console.log('[UI] Active modes:', active);
+          console.log('[UI] timelineGroup exists=', !!timelineGroup, 'hidden=', timelineGroup?.hidden);
+          console.log('[UI] orbitalStats exists=', !!orbitalStats, 'hidden=', orbitalStats?.hidden);
+        }
+      }
+
+      // 1. Catálogo de descripciones
+      const descriptions = {
+        'afinidad': 'Traza la elipse mediante la afinidad persistente entre sus circunferencias principal y secundaria, mostrando cómo sus tangentes convergen siempre en el eje mayor.',
+        'antiparalelogramo': 'Antiparalelogramo articulado cuyo punto de cruce traza la elipse mientras sus extremos recorren las circunferencias focales.',
+        'arquimedes_3': 'Evolución del compás de Arquímedes que utiliza tres patines articulados en un triángulo rígido.',
+        'astroide_envolvente': 'Dibuja la elipse mediante un punto vinculado a una vara que desliza por los ejes, envolviendo una astroide.',
+        'astroide_hipocicloide': 'Genera una astroide mediante una circunferencia de radio (a+b)/4 que rueda por el interior de otra de radio (a+b).',
+        'cuadrado': 'Construye la elipse mediante una vara guiada por dos circunferencias iguales que recorren los ejes.',
+        'circunferencia_afin': 'Muestra la elipse como la afinidad proyectiva de una circunferencia mediante un mapeo de cuadrículas.',
+        'focal': 'Define la elipse como el lugar de los centros de circunferencias que pasan por un foco y son tangentes a la focal del otro.',
+        '2focales': 'Genera la elipse mediante una familia de circunferencias centradas en su perímetro que pasan por un foco.',
+        'dandelin': 'Demuestra la elipse como sección cónica mediante las esferas de Dandelin.',
+        'delaunay_horiz': 'Paralelogramo articulado vinculado a una rueda superior que transforma el movimiento circular en elíptico.',
+        'delaunay_vert': 'Paralelogramo articulado vinculado a una rueda lateral para ajustar la separación mediante interacción directa.',
+        'conjugados': 'Construye la elipse a partir de diámetros conjugados, mostrando la dirección de afinidad mediante un triángulo móvil.',
+        'orbital': 'Explora la dinámica celeste: vector velocidad (tangente), aceleración y el hodógrafo interactivo.',
+        'elipse_rodante': 'Simula la rodadura exterior de una elipse sobre otra. Traza trayectorias de focos y vértices.',
+        'envolvente': 'Genera la elipse como la envolvente de sus tangentes basándose en la circunferencia focal.',
+        'evolvente': 'Representa la evolvente mediante una recta que desenrolla el perímetro de la elipse.',
+        'excentricidad': 'Lugar geométrico respecto a su directriz. Visualiza la proporción constante e = PF / PD.',
+        'fowler': 'Mecanismo de dos circunferencias engranadas que transforma rotación en trayectoria elíptica exacta.',
+        'circulos': 'Envolvente de una familia de circunferencias cuyos centros recorren el eje mayor y son tangentes a la principal.',
+        'guiado_oblicuo_davinci': 'Construye la elipse con dos opciones de triángulo degenerable y guías orientables.',
+        'guiado_oblicuo_proclo': 'Construye la elipse mediante guiado oblicuo de una vara con direcciones regulables.',
+        'guiado_ortogonal': 'Detecta mecanismos de autor (Proclo, Leonardo, van Schooten) con guiado sobre ejes ortogonales.',
+        'haces_proyectivos': 'Construye la elipse mediante la intersección de rayos sobre un marco deformable tangente.',
+        'haces_proyectivos_steiner': 'Intersección de rayos sobre un marco deformable de Steiner para explorar densidad de haces.',
+        'hipotrocoide1': 'Rodadura de un círculo sobre el interior de otro de doble diámetro (Par de Tusi).',
+        'hipotrocoide2': 'Mecanismo de círculos de Hire para explorar la normal y la elipse como envolvente.',
+        'isoperimetrica': 'Familia de elipses con el mismo perímetro calculado mediante la aproximación de Ramanujan.',
+        'jardinero': 'Simulación mediante cuerda de longitud fija (2a) anclada en los focos.',
+        'kopp': 'Pantógrafo que genera la elipse mediante el giro sincronizado de dos manivelas.',
+        'osculatriz': 'Analiza la curvatura local, la evoluta (astroide) y genera curvas paralelas (offset).',
+        'proporcion_latus': 'Relación a/b = b/l, donde el semieje menor es media geométrica entre el mayor y el latus rectum.',
+        'rombo_directriz': 'Conecta la elipse con sus directrices mediante un "rebote" geométrico en un rombo circunscrito.',
+        'steiner_circunelipse': 'Elipse de área mínima que pasa por los vértices de un triángulo inscrito.',
+        'steiner_inelipse': 'Elipse de área máxima inscrita que toca los lados en sus puntos medios.',
+        'brianchon': 'Teorema dual de Pascal: las diagonales de un hexágono circunscrito se cortan en un punto.',
+        'pascal': 'Los puntos de intersección de los lados opuestos de un hexágono inscrito son colineales.',
+        'van_schooten': 'Mecanismo basado en un rombo articulado y una vara deslizante.',
+        'waves': 'Patrón de interferencia constructiva con suma de radios constante (r1 + r2 = 2a).'
+      };
+
+      // 1. Catálogo organizado por bloques
+      const categories = [
+        {
+          name: 'Génesis',
+          modes: [
+            {id:'afinidad', name:'Afinidad'}, {id:'focal', name:'Circunferencia focal'},
+            {id:'2focales', name:'Circunferencia focal 2'}, {id:'dandelin', name:'Dandelin'},
+            {id:'envolvente', name:'Envolvente focal'}, {id:'excentricidad', name:'Excentricidad'},
+            {id:'circulos', name:'Generatrices circulares'},
+            {id:'hipotrocoide2', name:'Hipotrocoide 2'}, {id:'jardinero', name:'Jardinero'}, 
+            {id:'waves', name:'Waves'}
+          ]
+        },
+        {
+          name: 'Esencia',
+          modes: [
+            {id:'astroide_envolvente', name:'Astroide envolvente'}, {id:'astroide_hipocicloide', name:'Astroide hipocicloide'},
+            {id:'evolvente', name:'Evolvente de elipse'}, {id:'orbital', name:'Dinámica orbital'},
+            {id:'isoperimetrica', name:'Isoperimétricas'}, {id:'osculatriz', name:'Osculatriz: evoluta'},
+            {id:'proporcion_latus', name:'Latus rectum: a/b = b/l'}, {id:'rombo_directriz', name:'Rombo directriz'}
+          ]
+        },
+        {
+          name: 'Estructura',
+          modes: [
+            {id:'circunferencia_afin', name:'Circunferencia afín'}, {id:'conjugados', name:'Diámetros conjugados'}, 
+            {id:'haces_proyectivos', name:'Haces proyectivos'}, {id:'haces_proyectivos_steiner', name:'Haces Steiner'}, 
+            {id:'steiner_circunelipse', name:'Steiner: circunelipse'}, {id:'steiner_inelipse', name:'Steiner: inelipse'}, 
+            {id:'brianchon', name:'Teorema Brianchon'}, {id:'pascal', name:'Teorema Pascal'}
+          ]
+        },
+        {
+          name: 'Movimiento',
+          modes: [
+            {id:'antiparalelogramo', name:'Antiparalelogramo'}, {id:'arquimedes_3', name:'Arquímedes 3 guías'}, 
+            {id:'cuadrado', name:'Bastidor cuadrado'}, {id:'delaunay_horiz', name:'Delaunay horiz.'}, 
+            {id:'delaunay_vert', name:'Delaunay vert.'}, {id:'elipse_rodante', name:'Elipse rodante'},     
+            {id:'fowler', name:'Fowler'},
+            {id:'guiado_oblicuo_davinci', name:'Guiado oblicuo da Vinci'}, {id:'guiado_oblicuo_proclo', name:'Guiado oblicuo Proclo'},
+            {id:'guiado_ortogonal', name:'Guiado ortogonal'}, {id:'hipotrocoide1', name:'Hipotrocoide 1'},
+            {id:'kopp', name:'Kopp'}, {id:'van_schooten', name:'van Schooten'}
+          ]
+        }
+      ];
+
+      const layerStack = document.getElementById('layerStack');
+      const buttonsMap = {};
+
+      // Generación de la interfaz con "Lomos"
+      categories.forEach(cat => {
+        // Crear contenedor del grupo
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'layer-group';
+
+        // Crear el lomo vertical
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'group-label';
+        labelDiv.innerHTML = `<span>${cat.name}</span>`;
+        groupDiv.appendChild(labelDiv);
+
+        // Crear botones para cada modo
+        cat.modes.forEach(m => {
+          const row = document.createElement('div');
+          row.className = 'mode-row';
+
+          const btn = document.createElement('button');
+          btn.className = 'mode-btn';
+          btn.textContent = m.name;
+          btn.setAttribute('data-tooltip', descriptions[m.id] || "Sin descripción.");
+
+          btn.onmouseenter = (e) => {
+            const rect = btn.getBoundingClientRect();
+            btn.style.setProperty('--tip-top', rect.top + 'px');
+            btn.classList.add('show-tip');
+          };
+          btn.onmouseleave = () => btn.classList.remove('show-tip');
+
+          btn.onclick = (e) => {
+            if (e.altKey) {
+              // Desactivar todos los demás botones en el mapa
+              Object.values(buttonsMap).forEach(b => b.classList.remove('active'));
+              // Aquí asumimos que lab.state.activeLayers se gestiona en lab.toggleLayer
+              // pero forzamos limpieza si es necesario según tu lógica previa
+              lab.state.activeLayers = []; 
+              lab.toggleLayer(m.id); 
+              btn.classList.add('active');
+            } else {
+              lab.toggleLayer(m.id); 
+              btn.classList.toggle('active');
+            }
+            refreshControlsVisibility();
+          };
+
+          row.appendChild(btn);
+          groupDiv.appendChild(row);
+          buttonsMap[m.id] = btn;
+        });
+
+        layerStack.appendChild(groupDiv);
+      });
+
+      // --- INICIO LIMPIO ---
+      lab.state.activeLayers = [];
+      lab.state.mode = null;
+      Object.assign(lab.state, { spacing:0.8, skewX:0, t:1, showAxes:false, showTrails:true, showFoci:false });
+
+      // Inicializar sliders de elipse rodante con k=1 y ε=0 (se actualizará al activar el modo)
+      {
+        const eps0 = Math.sqrt(Math.max(0, 1 - (lab.state.b * lab.state.b) / (lab.state.a * lab.state.a)));
+        const erKEl  = document.getElementById('erK');
+        const erEpsEl = document.getElementById('erEps');
+        if (erKEl)  { erKEl.value  = 1.0; document.getElementById('erKVal').textContent  = '1.00'; }
+        if (erEpsEl){ erEpsEl.value = eps0; document.getElementById('erEpsVal').textContent = eps0.toFixed(3); }
+        lab.state._erUserTouched = false;
+      }
+      
+      const showAxesBtn = document.getElementById('showAxesBtn');
+      const refreshShowAxesBtn = () => showAxesBtn.classList.toggle('active', !!lab.state.showAxes);
+      showAxesBtn.onclick = () => { lab.state.showAxes = !lab.state.showAxes; refreshShowAxesBtn(); lab.syncPanel(); };
+
+      const showTrailsBtn = document.getElementById('showTrailsBtn');
+      const refreshShowTrailsBtn = () => {
+        const active = !!lab.state.showTrails;
+        showTrailsBtn.classList.toggle('active', active);
+        showTrailsBtn.textContent = active ? "Rastros" : "Rastros";
+      };
+      showTrailsBtn.onclick = () => { lab.state.showTrails = !lab.state.showTrails; refreshShowTrailsBtn(); lab.syncPanel(); };
+
+      const showFociBtn = document.getElementById('showFociBtn');
+      const refreshShowFociBtn = () => {
+        const active = !!lab.state.showFoci;
+        showFociBtn.classList.toggle('active', active);
+        showFociBtn.textContent = active ? "Focos" : "Focos";
+      };
+      showFociBtn.onclick = () => { lab.state.showFoci = !lab.state.showFoci; refreshShowFociBtn(); lab.syncPanel(); };
+      const showHiddenBtn = document.getElementById('showHiddenBtn');
+      const refreshShowHiddenBtn = () => {
+        showHiddenBtn.classList.toggle('active', !!lab.state.showHidden);
+      };
+      showHiddenBtn.onclick = () => {
+        lab.state.showHidden = !lab.state.showHidden;
+        refreshShowHiddenBtn();
+        lab.syncPanel();
+      };
+
+      const updateStats = () => {
+        const a = lab.state.a, b = lab.state.b;
+        const c = Math.sqrt(Math.max(0, a*a - b*b));
+        document.getElementById('aval').textContent = Math.round(a);
+        document.getElementById('bval').textContent = Math.round(b);
+        document.getElementById('cval').textContent = Math.round(c);
+        document.getElementById('eval').textContent = (c / (a || 1)).toFixed(3);
+        document.getElementById('periodval').textContent = (0.05 * Math.pow(a, 1.5)).toFixed(1);
+        document.getElementById('vmaxval').textContent = (8000 / Math.max(a-c, 1)).toFixed(2);
+        document.getElementById('vminval').textContent = (8000 / (a+c)).toFixed(2);
+      };
+
+      document.getElementById('timeline').oninput = (e)=>{ lab.state.t = parseFloat(e.target.value); lab.syncPanel(); };
+      document.getElementById('spacing').oninput  = (e)=>{ lab.state.spacing = parseFloat(e.target.value); lab.syncPanel(); };
+      document.getElementById('dandelinASlider').oninput = (e) => {
+        lab.state.a = parseFloat(e.target.value);
+        document.getElementById('dandelinAVal').textContent = Math.round(lab.state.a);
+        lab.syncPanel();
+      };
+      document.getElementById('erK').oninput = (e) => {
+        lab.state._erUserTouched = true;
+        document.getElementById('erKVal').textContent = parseFloat(e.target.value).toFixed(2);
+        lab.syncPanel();
+      };
+      document.getElementById('erEps').oninput = (e) => {
+        lab.state._erUserTouched = true;
+        document.getElementById('erEpsVal').textContent = parseFloat(e.target.value).toFixed(3);
+        lab.syncPanel();
+      };
+
+// --- LÓGICA DE PROPORCIONES SINGULARES ---
+      document.getElementById('propSelect').onchange = (e) => {
+        const val = e.target.value;
+        if (val === 'free') return;
+
+        const [type, ratioStr] = val.split('_');
+        const k = parseFloat(ratioStr);
+        const b = lab.state.b;
+        const phi = (1 + Math.sqrt(5)) / 2;
+        
+        // Ajustamos k si es el valor aproximado de oro/raíz
+        const realK = (ratioStr === '1.618') ? phi : (ratioStr === '1.414' ? Math.sqrt(2) : k);
+
+        let newA = lab.state.a;
+
+        if (type === 'ab') {
+          newA = b * realK;
+        } 
+        else if (type === 'ac') {
+          // a = k*c  => a = (k*b) / sqrt(k² - 1)
+          if (realK > 1) newA = (realK * b) / Math.sqrt(realK * realK - 1);
+        } 
+        else if (type === 'cb') {
+          // c = k*b  => a = b * sqrt(k² + 1)
+          newA = b * Math.sqrt(realK * realK + 1);
+        }
+
+        // Aplicamos límites de seguridad (B_FIXED y A_MAX definidos en core)
+        lab.state.a = Math.max(b + 0.1, Math.min(600, newA)); // 600 como valor genérico de A_MAX
+
+        // Si el guiado ortogonal está activo, actualizamos sus parámetros internos
+        if (lab.state.activeLayers.includes('guiado_ortogonal')) {
+          lab.state._vs0_Rfix = (lab.state.a + lab.state.b) / 2;
+          lab.state._vs0_lambda = lab.state.b / lab.state._vs0_Rfix;
+        }
+
+        lab.syncPanel();
+      };
+
+      window.addEventListener('elipse-cambiada', () => {
+        // Simplemente actualizamos los numeritos y botones
+        updateStats(); 
+        refreshShowAxesBtn(); 
+        refreshShowTrailsBtn(); 
+        refreshShowFociBtn(); 
+        refreshShowHiddenBtn(); 
+        refreshControlsVisibility(false);
+      });
+
+      function refreshPhiSlider() {
+        const slider = document.getElementById('phiSlider');
+        if (!slider) return;
+        const a = lab.state.a, b = lab.state.b;
+        const minDeg = Math.round(Math.asin(Math.min(1, 2 * Math.sqrt(a * b) / (a + b))) * 180 / Math.PI);
+        const maxDeg = 180 - minDeg;
+        document.getElementById('phiVal').textContent = slider.value;
+        document.getElementById('phiMinVal').textContent = minDeg;
+        document.getElementById('phiMaxVal').textContent = maxDeg;
+      }
+
+      document.getElementById('dandelinASlider').oninput = (e) => {
+        const eps = parseFloat(e.target.value);
+        const b = lab.state.b;
+        lab.state.a = b / Math.sqrt(Math.max(1e-9, 1 - eps * eps));
+        document.getElementById('dandelinAVal').textContent = eps.toFixed(3);
+        lab.syncPanel();
+      };
+
+      document.getElementById('resetBtn').onclick = ()=>{
+        lab.viewport.userPanX = 0; lab.viewport.userPanY = 0; lab.viewport.userZoom = 1;
+        lab.state.a = 150; lab.state.b = 100; lab.viewport.resetScale?.(); lab.syncPanel();
+      };
+
+      function doResize(){
+        const stage=document.getElementById('stage');
+        const w=stage.clientWidth, h=stage.clientHeight, dpr=window.devicePixelRatio||1;
+        cv.width=w*dpr; cv.height=h*dpr;
+        cv.style.width=w+'px'; cv.style.height=h+'px';
+        lab.viewport.setSize(w,h); redraw();
+      }
+
+      document.getElementById('erResetBtn').onclick = () => {
+        const eps = Math.sqrt(Math.max(0, 1 - (lab.state.b * lab.state.b) / (lab.state.a * lab.state.a)));
+        document.getElementById('erK').value = 1.0;
+        document.getElementById('erKVal').textContent = '1.00';
+        document.getElementById('erEps').value = eps;
+        document.getElementById('erEpsVal').textContent = eps.toFixed(3);
+        lab.syncPanel();
+      };
+
+      window.addEventListener('resize', doResize);
+      doResize(); updateStats(); refreshControlsVisibility();
+    })();
+    document.getElementById('theory-btn').onclick = function() {
+      const area = document.getElementById('theory-text');
+      const isOpening = area.hidden;
+      
+      area.hidden = !isOpening;
+      
+      // Cambiamos el estilo del botón para indicar estado activo
+      this.classList.toggle('active', isOpening);
+      this.textContent = isOpening ? "✕ Cerrar análisis" : "Análisis de singularidades";
+      
+      // Si se abre, hacemos un scroll suave para asegurar que el texto sea visible
+      if (isOpening) {
+        area.animate([
+          { opacity: 0, transform: 'translateY(-10px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 300, easing: 'ease-out' });
+      }
+    };
+  </script>
+<button 
+  id="help-trigger" 
+  onclick="document.getElementById('help-overlay').style.display='flex'"
+  style="position:fixed; bottom:20px; right:20px; width:45px; height:45px; border-radius:50%; background:#1e293b; color:white; border:2px solid #334155; font-size:20px; cursor:pointer; z-index:10000; box-shadow:0 4px 15px rgba(0,0,0,0.4);">
+  ?
+</button>
+
+<div 
+  id="help-overlay" 
+  onclick="if(event.target === this) this.style.display='none'"
+  style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.85); backdrop-filter:blur(4px); justify-content:center; align-items:center; z-index:10001;">
+  
+  <div style="background:white; padding:30px; border-radius:16px; max-width:420px; width:90%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); position:relative; font-family: sans-serif;">
+    <h3 style="margin-top:0; color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-size:1.4rem;">Controles</h3>
+    
+    <div style="margin:25px 0;">
+
+<div style="display:flex; align-items:center; margin-bottom:22px;">
+        <div style="width:35px; margin-right:15px; display:flex; justify-content:center; align-items:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+        </div>
+        <div style="font-size:0.95rem; color:#475569;"><strong>Click izq. sostenido:</strong> Mover lienzo</div>
+      </div>
+
+      <div style="display:flex; align-items:center; margin-bottom:22px;">
+        <div style="width:35px; margin-right:15px; display:flex; justify-content:center; align-items:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </div>
+        <div style="font-size:0.95rem; color:#475569;"><strong>Rueda del ratón:</strong> Zoom (Acercar/Alejar)</div>
+      </div>
+      
+      <div style="display:flex; align-items:center; margin-bottom:22px;">
+        <div style="width:35px; margin-right:15px; display:flex; justify-content:center; align-items:center; gap:4px;">
+          <div style="width:0; height:0; border-top:7px solid transparent; border-bottom:7px solid transparent; border-right:10px solid #ef4444;"></div>
+          <div style="width:0; height:0; border-top:7px solid transparent; border-bottom:7px solid transparent; border-left:10px solid #ef4444;"></div>
+        </div>
+        <div style="font-size:0.95rem; color:#475569;"> Arrastre de diámetro mayor</div>
+      </div>
+      
+      <div style="display:flex; align-items:center; margin-bottom:22px;">
+        <div style="width:35px; margin-right:15px; display:flex; justify-content:center; align-items:center; gap:4px;">
+          <div style="width:0; height:0; border-top:7px solid transparent; border-bottom:7px solid transparent; border-right:10px solid #10b981;"></div>
+          <div style="width:0; height:0; border-top:7px solid transparent; border-bottom:7px solid transparent; border-left:10px solid #10b981;"></div>
+        </div>
+        <div style="font-size:0.95rem; color:#475569;"> Arrastre de deformación del paralelogramo</div>
+      </div>
+      
+      <div style="display:flex; align-items:center; margin-bottom:22px;">
+        <div style="width:35px; margin-right:15px; display:flex; justify-content:center; align-items:center; height:24px; position:relative;">
+          <div style="width:22px; height:22px; border:1.5px dashed #ef4444; border-radius:50%; position:absolute;"></div>
+          <div style="width:10px; height:10px; background:#ef4444; border-radius:50%; position:absolute;"></div>
+        </div>
+        <div style="font-size:0.95rem; color:#475569;"> Punto arrastrable</div>
+      </div>
+
+      <div style="display:flex; align-items:center; margin-bottom:22px;">
+        <div style="width:35px; margin-right:15px; display:flex; justify-content:center; align-items:center;">
+           <div style="
+             width: 18px; 
+             height: 18px; 
+             border: 2px solid #64748b; 
+             border-radius: 50%; 
+             border-top-color: #2563eb; 
+             background: #f1f5f9; /* <--- ESTE ES EL RELLENO GRIS CLARO */
+             transform: rotate(-45deg);
+           "></div>
+        </div>
+        <div style="font-size:0.95rem; color:#475569;"> Dial para rotaciones</div>
+      </div>
+    </div>
+
+    <button 
+      onclick="document.getElementById('help-overlay').style.display='none'"
+      style="width:100%; padding:12px; background:#1e293b; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:1rem;">
+      Entendido
+    </button>
+  </div>
+</div>
+  </div>
+</div>
+<footer style="text-align: center; padding: 30px; font-family: sans-serif; opacity: 0.8; line-height: 1.6;">
+    <p><strong>ElipseLab</strong> © 2026 por <strong>Manuel Sanmartín Fernández</strong></p>
+    <p><small>Laboratorio interactivo desarrollado con asistencia de IA</small></p>
+    <p>
+        <small>
+            Distribuido bajo licencia 
+            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es" target="_blank" style="color: inherit;">
+                CC BY-NC-SA 4.0
+            </a>
+        </small>
+    </p>
+</footer>
+</body>
+</html>
