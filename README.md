@@ -1,4 +1,5 @@
 # EllipseLab: Laboratorio Geométrico Interactivo
+![Demostración interactiva del Mecanismo Orbital y Hodógrafo](Captura de pantalla 2026-04-21 213331.png)
 
 **EllipseLab** es una plataforma interactiva desarrollada en JavaScript puro para la visualización y estudio de la elipse a través de **39 métodos constructivos y mecanismos históricos**.
 
