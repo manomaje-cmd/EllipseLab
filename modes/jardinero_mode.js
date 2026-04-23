@@ -102,40 +102,29 @@
       // Cuerdas principales
       const op = 1 - (fOndasIntro * 0.7);
       drawSegment(ctx, F2, (fCuerdaTens>0? P : {x:a,y:0}), COL.cuerdaDer, col.strokeMedio*2, fCuerdaProg*op, vp);
-      
+
       if (fCuerdaTens > 0) {
         drawSegment(ctx, F1, P, COL.cuerdaIzq, col.strokeMedio*2, fCuerdaTens*op, vp);
         
-        // --- CÁLCULO DE LA BISECTRIZ (Normal a la elipse) ---
-        // Vectores unitarios desde P hacia los focos
-        const v1 = { x: F1.x - P.x, y: F1.y - P.y };
-        const d1 = Math.hypot(v1.x, v1.y);
-        const v2 = { x: F2.x - P.x, y: F2.y - P.y };
-        const d2 = Math.hypot(v2.x, v2.y);
-        
-        if (d1 > 0.001 && d2 > 0.001) {
-          const u1 = { x: v1.x / d1, y: v1.y / d1 };
-          const u2 = { x: v2.x / d2, y: v2.y / d2 };
-          
-          // La bisectriz del ángulo interior apunta hacia "dentro".
-          // Sumamos los vectores unitarios para obtener la dirección.
-          const bisX = u1.x + u2.x;
-          const bisY = u1.y + u2.y;
-          const magB = Math.hypot(bisX, bisY);
-          
-          if (magB > 0.0001) {
-            const bDir = { x: bisX / magB, y: bisY / magB };
-            // "No me seas rácano": la hacemos larga (p.ej. 1.5 veces el semieje a)
-            const largo = a * 1.5;
-            const P2 = { x: P.x + bDir.x * largo, y: P.y + bDir.y * largo };
-            const P1_ext = { x: P.x - bDir.x * (largo/2), y: P.y - bDir.y * (largo/2) };
+        // --- NORMAL (Sincronizada con modo Osculatriz) ---
+        const cosT = Math.cos(uAct), sinT = Math.sin(uAct);
+        const nxRaw = b * cosT, nyRaw = a * sinT;
+        const nDist = Math.sqrt(nxRaw * nxRaw + nyRaw * nyRaw);
+
+        if (nDist > 1e-9) {
+            // ux, uy apuntando hacia afuera (estándar de la elipse)
+            const ux = nxRaw / nDist, uy = nyRaw / nDist;
             
-            // Dibujamos la bisectriz (línea de trazos para elegancia técnica)
+            const largo = a * 1.5; 
+            // P2 es el extremo largo, P1_ext el corto (ajusta signos si quieres invertir la dirección)
+            const P2 = { x: P.x - ux * largo, y: P.y - uy * largo }; 
+            const P1_ext = { x: P.x + ux * (largo / 4), y: P.y + uy * (largo / 4) };
+
             ctx.save();
-            ctx.setLineDash([5, 5]);
+            ctx.setLineDash([12, 4, 2, 4]); 
+            ctx.lineCap = "round"; 
             drawSegment(ctx, P1_ext, P2, COL.bisectriz, col.strokeFino, fCuerdaTens * 0.8, vp);
             ctx.restore();
-          }
         }
 
         drawPoint(ctx, P.x, P.y, col.ellipse, col.jointSize, true, op, vp);
