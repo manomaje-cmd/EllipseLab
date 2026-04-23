@@ -162,28 +162,36 @@
             }
         }
 
-        // ── CURVA PARALELA (INTACTA) ───────────────────────────────────────
+        // ── CURVA PARALELA ───────────────────────────────────────────────
         if (fTravel > 0 && state.offsetNormal !== undefined) {
-            const off2 = state.offsetNormal;
+            const off2 = state.offsetNormal; // Asegúrate de que esto apunta al estado
             ctx.save();
-            ctx.setLineDash([]); // Reset para la curva
+            ctx.setLineDash([]); // Limpieza absoluta de trazos anteriores
             ctx.strokeStyle = "#ff00ff";
             ctx.globalAlpha = 0.45 * fShow;
             ctx.lineWidth = vp.dpr;
             ctx.lineJoin = "round";
             ctx.beginPath();
+            
             let started = false;
-            const steps_par = Math.max(1, Math.round(360 * fTravel));
+            const steps_par = 200; // Valor fijo para asegurar que siempre dibuje
             for (let i = 0; i <= steps_par; i++) {
-                const ang = (i / 180) * Math.PI;
+                const ang = (i / steps_par) * Math.PI * 2; // Giro completo
                 const nx = b * Math.cos(ang), ny = a * Math.sin(ang);
                 const nd = Math.sqrt(nx * nx + ny * ny);
-                if (nd < 1e-9) continue;
-                const ex = (a * Math.cos(ang)) + (nx / nd) * off2;
-                const ey = (b * Math.sin(ang)) + (ny / nd) * off2;
-                if (!started) { ctx.moveTo(vp.X(ex), vp.Y(ey)); started = true; }
-                else ctx.lineTo(vp.X(ex), vp.Y(ey));
+                
+                if (nd > 1e-9) {
+                    const ex = (a * Math.cos(ang)) + (nx / nd) * off2;
+                    const ey = (b * Math.sin(ang)) + (ny / nd) * off2;
+                    if (!started) { 
+                        ctx.moveTo(vp.X(ex), vp.Y(ey)); 
+                        started = true; 
+                    } else {
+                        ctx.lineTo(vp.X(ex), vp.Y(ey));
+                    }
+                }
             }
+            ctx.closePath(); // Cerramos la elipse paralela
             ctx.stroke();
             ctx.restore();
         }
