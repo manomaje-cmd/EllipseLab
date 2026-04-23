@@ -147,32 +147,42 @@
             state._hipoPhi2Dragged = false;
         }
 
-        // ─────────────────────────────────────────
-        // 6.5) LÍNEA AUXILIAR + NORMAL + PUNTO TRAZADOR ARRASTRABLE
-        // El arrastre lo gestiona el core (dragTarget = 'normalTracer')
+       // ─────────────────────────────────────────
+        // 6.5) NORMAL (Sincronizada con Jardinero y Osculatriz)
         // ─────────────────────────────────────────
         if (fGiroProg > 0) {
             const normalColor = "#ff00ff";
+            // Usamos las mismas bases: b*cosT y a*sinT
             const nxRaw = b * cosT, nyRaw = a * sinT;
-            const nDist = Math.sqrt(nxRaw*nxRaw + nyRaw*nyRaw);
-            if (nDist > 1e-9) {
-                const ux = nxRaw/nDist, uy = nyRaw/nDist;
-                // Longitud de la normal: límite crítico interior b²/a
-                const extNormal = (b * b) / a;
-                // Línea auxiliar: más larga en ambos sentidos para poder arrastrar más allá
-                const extAux = Math.max(a, b) * 2.2;
+            const nDist = Math.sqrt(nxRaw * nxRaw + nyRaw * nyRaw);
 
-                // ── 1) Línea auxiliar continua — actúa como normal ──
-                const Aux1 = { x: P.x - ux*extAux, y: P.y - uy*extAux };
-                const Aux2 = { x: P.x + ux*extAux, y: P.y + uy*extAux };
+            if (nDist > 1e-9) {
+                const ux = nxRaw / nDist, uy = nyRaw / nDist;
+                
+                // La longitud maestra: 1.5 * a
+                const largo = a * 1.5; 
+
+                // Mismos puntos que en Jardinero: P2 entra (largo), P1_ext asoma (largo/4)
+                const P2 = { x: P.x - ux * largo, y: P.y - uy * largo };
+                const P1_ext = { x: P.x + ux * (largo / 4), y: P.y + uy * (largo / 4) };
+
                 ctx.save();
-                ctx.setLineDash([]);
-                drawSegment(ctx, Aux1, Aux2, normalColor, vp.dpr * 1.2, 0.75, vp);
+                // MISMO ESTILO EXACTO: Trazo y punto [12, 4, 2, 4]
+                ctx.setLineDash([12, 4, 2, 4]); 
+                ctx.lineCap = "round"; 
+                ctx.strokeStyle = normalColor;
+                ctx.lineWidth = vp.dpr * 1.2;
+                ctx.globalAlpha = 0.75;
+
+                ctx.beginPath();
+                ctx.moveTo(vp.X(P1_ext.x), vp.Y(P1_ext.y));
+                ctx.lineTo(vp.X(P2.x), vp.Y(P2.y));
+                ctx.stroke();
                 ctx.restore();
 
-                // Etiqueta "n"
+                // Etiqueta "n" posicionada igual
+                const labelOffset = (b * b / a) * 0.55;
                 const perpX = -uy, perpY = ux;
-                const labelOffset = extNormal * 0.55;
                 const sideOffset = 12 / (vp.scale * vp.userZoom);
                 drawLabel(ctx,
                     vp.X(P.x - ux * labelOffset + perpX * sideOffset),
@@ -180,6 +190,7 @@
                     "n", { align: "center", baseline: "middle", size: 13, bold: true, color: normalColor }, vp);
             }
         }
+        
 
         // ─────────────────────────────────────────
         // 7) ELIPSE
