@@ -12,17 +12,15 @@
         const jSize = col.jointSize || (3.5 * vp.dpr);
 
         const c2 = Math.max(0, a * a - b * b);
-        const Ax = c2 / a;   // semieje X de la astroide
-        const Ay = c2 / b;   // semieje Y de la astroide
+        const Ax = c2 / a;   
+        const Ay = c2 / b;   
 
-        // ── Cronología ────────────────────────────────────────────────────
         const fTravel = clamp01((t - 0.25) / 0.75);
         const theta = fTravel * 2 * Math.PI;
         const fShow = clamp01((t - 0.25) / 0.12);
 
         if (t < 0.26) state.offsetNormal = undefined;
 
-        // ── Helpers geométricos ───────────────────────────────────────────
         const oscCenter = (th) => ({
             x:  Ax * Math.pow(Math.cos(th), 3),
             y: -Ay * Math.pow(Math.sin(th), 3)
@@ -36,16 +34,18 @@
         // ── Ejes ──────────────────────────────────────────────────────────
         if (t >= 0.25 && state.showAxes) {
             ctx.save();
+            ctx.setLineDash([]); // Aseguramos que los ejes sean continuos
             ctx.globalAlpha = 0.35 * fShow;
             drawAxesExact(ctx, a, b, vp);
             ctx.restore();
         }
         drawHandle(ctx, a, 0, '#ff0000', 'h', 1, vp);
 
-        // ── Elipse (trazo progresivo) ─────────────────────────────────────
+        // ── Elipse ────────────────────────────────────────────────────────
         if (fTravel > 0) {
             const steps_el = Math.max(1, Math.round(360 * fTravel));
             ctx.save();
+            ctx.setLineDash([]); // Aseguramos que la elipse sea continua
             ctx.strokeStyle = col.ellipse;
             ctx.lineWidth = col.strokeGrueso || (2 * vp.dpr);
             ctx.globalAlpha = 0.95 * fShow;
@@ -59,14 +59,14 @@
             ctx.restore();
         }
 
-        // ── Evoluta (astroide) ────────────────────────────────────────────
+        // ── Evoluta ───────────────────────────────────────────────────────
         if (fTravel > 0) {
             const steps_evo = Math.max(1, Math.round(360 * fTravel));
             ctx.save();
+            ctx.setLineDash([]); 
             ctx.strokeStyle = col.circs || '#888';
             ctx.lineWidth = (col.strokeMedio || 1.5) * vp.dpr;
             ctx.globalAlpha = 0.70 * fShow;
-            ctx.lineJoin = ctx.lineCap = 'round';
             ctx.beginPath();
             for (let i = 0; i <= steps_evo; i++) {
                 const Ci = oscCenter(i * 2 * Math.PI / 360);
@@ -74,7 +74,6 @@
             }
             ctx.stroke();
             ctx.restore();
-
             const cusp = [{ x: Ax, y: 0 }, { x: -Ax, y: 0 }, { x: 0, y: Ay }, { x: 0, y: -Ay }];
             cusp.forEach(p => drawPoint(ctx, p.x, p.y, col.circs || '#888', jSize * 0.8, true, 0.35 * fShow, vp));
         }
@@ -84,8 +83,8 @@
         if (fTravel > 0) {
             const C = oscCenter(theta);
             const R = oscRadius(theta);
-
             ctx.save();
+            ctx.setLineDash([]); 
             ctx.strokeStyle = col.barColor || '#c2410c';
             ctx.lineWidth = (col.strokeMedio || 1.5) * vp.dpr;
             ctx.globalAlpha = 0.85 * fShow;
@@ -96,16 +95,9 @@
 
             drawPoint(ctx, P.x, P.y, col.ellipse, jSize * 1.5, true, fShow, vp);
             drawPoint(ctx, C.x, C.y, col.barColor || '#c2410c', jSize, true, fShow, vp);
-
-            if (drawLabel) {
-                const Rmin = b * b / a, Rmax = a * a / b;
-                drawLabel(ctx, vp.X(0), vp.Y(-b * 0.88),
-                    `R = ${R.toFixed(1)}   (mín ${Rmin.toFixed(1)} · máx ${Rmax.toFixed(1)})`,
-                    { size: 11, color: col.barColor || '#c2410c', alpha: 0.85 * fShow }, vp);
-            }
         }
 
-        // ── NORMAL + PUNTO TRAZADOR ───────────────────────────────────────
+        // ── NORMAL + PUNTO TRAZADOR (CORREGIDO) ──────────────────────────
         if (fTravel > 0) {
             const normalColor = "#ff00ff";
             const cosT = Math.cos(theta), sinT = Math.sin(theta);
@@ -114,42 +106,31 @@
 
             if (nDist > 1e-9) {
                 const ux = nxRaw / nDist, uy = nyRaw / nDist;
-                
-                // IGUALAMOS LONGITUDES:
                 const largo = a * 1.5; 
                 const P2 = { x: P.x - ux * largo, y: P.y - uy * largo }; 
                 const P1_ext = { x: P.x + ux * (largo / 4), y: P.y + uy * (largo / 4) };
 
-                // 1) Línea normal
                 ctx.save();
-                ctx.setLineDash([12, 4, 2, 4]); 
+                ctx.beginPath();
+                ctx.setLineDash([12, 4, 2, 4]); // DEFINIR AQUÍ
                 ctx.lineCap = "round";
                 ctx.strokeStyle = normalColor;
                 ctx.lineWidth = vp.dpr * 1.2;
                 ctx.globalAlpha = 0.75 * fShow;
-
-                ctx.beginPath();
                 ctx.moveTo(vp.X(P1_ext.x), vp.Y(P1_ext.y));
                 ctx.lineTo(vp.X(P2.x), vp.Y(P2.y));
                 ctx.stroke();
                 ctx.restore();
 
-                // Etiqueta "n"
-                const perpX = -uy, perpY = ux;
-                const labelOffset = ((b * b) / a) * 0.55;
-                const sideOffset = 12 / (vp.scale * vp.userZoom);
-                drawLabel(ctx, 
-                    vp.X(P.x - ux * labelOffset + perpX * sideOffset),
-                    vp.Y(P.y - uy * labelOffset + perpY * sideOffset),
-                    "n", { align: "center", baseline: "middle", size: 13, bold: true, color: normalColor }, vp);
-
                 // 2) Punto trazador
+                const off = state.offsetNormal !== undefined ? state.offsetNormal : -(b*b)/a;
                 const Tr = { x: P.x + ux * off, y: P.y + uy * off };
                 const snapTolDraw = 0.5 / (vp.scale * vp.userZoom);
                 const isSnapped = [-(b*b)/a, -(a*a)/b, (b*b)/a, (a*a)/b].some(sp => Math.abs(off - sp) < snapTolDraw);
                 const tracerColor = isSnapped ? "#34d399" : normalColor;
 
                 ctx.save();
+                ctx.setLineDash([]); 
                 ctx.strokeStyle = ctx.fillStyle = tracerColor;
                 ctx.globalAlpha = 0.9; ctx.lineWidth = 1.5 * vp.dpr;
                 ctx.beginPath(); ctx.arc(vp.X(Tr.x), vp.Y(Tr.y), 5 * vp.dpr, 0, Math.PI * 2); ctx.fill();
@@ -157,31 +138,6 @@
                 ctx.beginPath(); ctx.arc(vp.X(Tr.x), vp.Y(Tr.y), 10 * vp.dpr, 0, Math.PI * 2); ctx.stroke();
                 ctx.restore();
             }
-        }
-
-        // ── CURVA PARALELA ───────────────────────────────────────────────
-        if (fTravel > 0 && state.offsetNormal !== undefined) {
-            const off2 = state.offsetNormal;
-            ctx.save();
-            ctx.strokeStyle = "#ff00ff";
-            ctx.globalAlpha = 0.45 * fShow;
-            ctx.lineWidth = vp.dpr;
-            ctx.lineJoin = "round";
-            ctx.beginPath();
-            let started = false;
-            const steps_par = Math.max(1, Math.round(360 * fTravel));
-            for (let i = 0; i <= steps_par; i++) {
-                const ang = (i / 180) * Math.PI;
-                const nx = b * Math.cos(ang), ny = a * Math.sin(ang);
-                const nd = Math.sqrt(nx * nx + ny * ny);
-                if (nd < 1e-9) continue;
-                const ex = (a * Math.cos(ang)) + (nx / nd) * off2;
-                const ey = (b * Math.sin(ang)) + (ny / nd) * off2;
-                if (!started) { ctx.moveTo(vp.X(ex), vp.Y(ey)); started = true; }
-                else ctx.lineTo(vp.X(ex), vp.Y(ey));
-            }
-            ctx.stroke();
-            ctx.restore();
         }
 
         if (state.showFoci) drawFoci(ctx, a, b, vp);
