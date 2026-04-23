@@ -1041,5 +1041,87 @@
         </small>
     </p>
 </footer>
+<script>
+// ===== CONTROLES DE ANIMACIÓN AUTOMÁTICOS =====
+(function(){
+  window.addEventListener('load', function(){
+
+    const lab = window.ElipseLab;
+    const timeline = document.getElementById('timeline');
+    if (!lab || !timeline) return;
+
+    // Crear controles
+    const box = document.createElement('div');
+    box.style.marginTop = '10px';
+
+    box.innerHTML = `
+      <div style="display:flex; gap:6px; margin-bottom:6px;">
+        <button id="playBtn">▶</button>
+        <button id="pauseBtn">⏸</button>
+        <button id="loopBtn">🔁</button>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="speedBtn" data-speed="0.25">0.25x</button>
+        <button class="speedBtn" data-speed="1">1x</button>
+        <button class="speedBtn" data-speed="2">2x</button>
+      </div>
+    `;
+
+    // Insertar debajo del slider
+    timeline.parentNode.appendChild(box);
+
+    let playing = false;
+    let speed = 1;
+    let loop = false;
+
+    function step(){
+      if (!playing) return;
+
+      lab.state.t += 0.002 * speed;
+
+      if (lab.state.t > 1){
+        if (loop){
+          lab.state.t = 0;
+        } else {
+          lab.state.t = 1;
+          playing = false;
+          return;
+        }
+      }
+
+      timeline.value = lab.state.t;
+      lab.syncPanel();
+      requestAnimationFrame(step);
+    }
+
+    document.getElementById('playBtn').onclick = () => {
+      // Si está al final, reiniciar
+      if (lab.state.t >= 0.999) {
+        lab.state.t = 0;
+        timeline.value = 0;
+        lab.syncPanel();
+      }
+
+      if (!playing){
+        playing = true;
+        step();
+      }
+    };
+    document.getElementById('pauseBtn').onclick = () => {
+      playing = false;
+    };
+
+    document.getElementById('loopBtn').onclick = function(){
+      loop = !loop;
+      this.style.background = loop ? '#ccc' : '';
+    };
+
+    document.querySelectorAll('.speedBtn').forEach(btn => {
+      btn.onclick = () => speed = parseFloat(btn.dataset.speed);
+    });
+
+  });
+})();
+</script>	
 </body>
 </html>
