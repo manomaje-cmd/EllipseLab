@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>EllipseLab</title>
+<title>ElipseLab</title>
 
 <style>
   :root {
@@ -122,8 +122,8 @@
     border-radius: 8px;
     font-size: 0.75rem;
     line-height: 1.4;
-    position: fixed;
-    left: 270px;
+    position: fixed; /* Sigue siendo fixed para que no lo corte el panel */
+    left: 270px;      /* Siempre a la derecha del panel */
     z-index: 99999;
     pointer-events: none;
     box-shadow: 0 10px 20px rgba(0,0,0,0.4);
@@ -152,7 +152,7 @@
 .layer-group {
   position: relative;
   margin-bottom: 10px;
-  padding-left: 15px;
+  padding-left: 15px; /* Espacio para el lomo y la línea */
 }
 
 /* El "Lomo de libro" vertical */
@@ -201,7 +201,7 @@
 }
 /* 1. ELIMINAR EL PUNTO AZUL DEL BOTÓN DE ANÁLISIS */
 #theory-btn::before {
-  content: none !important;
+  content: none !important; /* Quita el carácter "•" */
 }
 </style>
 </head>
@@ -239,18 +239,18 @@
       ">
         <p style="margin-top:0">
         <p>La circunferencia tangente a la astroide envolvente de la familia de elipses tiene diámetro a+b. La circunferencia tangente a la astroide envolvente de las normales tiene diámetro a-b.</p>
-		<p>El ángulo 2·arcsin((a-b)/(a+b)) entre las dos tangentes a la rodante La Hire desde un punto de la elipse delimita la oscilación de la normal a lo largo de la elipse</p>
-		<p>La oscilación máxima de la normal es la correspondiente a los extremos del latus rectum.</p>
-		<p>La normal a la elipse en un punto de esta bisecta el ángulo entre los dos radios focales.</p>
-		<p>Los extremos de los diámetros azules de la rodante que pasan por  los pies de tangencia desde un punto de la elipse a la rodante pertenecen a la evoluta de la elipse, coincidiendo con los puntos de tangencia de esa evoluta con la circunferencia de radio (a−b) centrada en O.</p>
-		<p>El ángulo máximo entre el diámetro mayor de la elipse y los diámetros de la circunferencia de diámetro a-b con extremos en los pies de tangencia desde un punto de la elipse a la Hire es de 45º (ε = 0). El ángulo será de 30º cuando a = 3b.</p>
-		<p>La bisectriz del nodo de articulación del antiparalelogramo es la normal de la elipse en ese punto.</p>       
+	<p>El ángulo 2·arcsin((a-b)/(a+b)) entre las dos tangentes a la rodante La Hire desde un punto de la elipse delimita la oscilación de la normal a lo largo de la elipse</p>
+	<p>La oscilación máxima de la normal es la correspondiente a los extremos del latus rectum.</p>
+	<p>La normal a la elipse en un punto de esta bisecta el ángulo entre los dos radios focales.</p>
+	<p>Los extremos de los diámetros azules de la rodante que pasan por  los pies de tangencia desde un punto de la elipse a la rodante pertenecen a la evoluta de la elipse, coincidiendo con los puntos de tangencia de esa evoluta con la circunferencia de radio (a−b) centrada en O.</p>
+	<p>El ángulo máximo entre el diámetro mayor de la elipse y los diámetros de la circunferencia de diámetro a-b con extremos en los pies de tangencia desde un punto de la elipse a la Hire es de 45º (ε = 0). El ángulo será de 30º cuando a = 3b.</p>
+	<p>La bisectriz del nodo de articulación del antiparalelogramo es la normal de la elipse en ese punto.</p>       
         <p>La evoluta de la elipse se puede construir como lugar de centros de curvatura (osculatrices) o como envolvente resultante de las normales.</p>
         <p>La proporción entre ejes de evoluta de la elipse es la misma que entre a y b.</p>
         <p>La normal oscila entre los lados del triángulo magenta (Hipotrocoide 2).</p>
         <p>Con a = b · φ: en Rombo y directriz, eje menor del rombo = 2a, eje mayor del rombo = eje menor · φ, 2 a = latus rectum · φ</p>
         <p>Con a = b · φ: en Rombo y directriz y osculatriz, la distancia entre cúspides superior e inferior de la astroide es el eje vertical del rombo.</p>
-		<p>Con a = b · φ: ángulo formado por las tangentes de un punto de la elipse a la Hire  = ángulo áureo/5</p>
+	<p>Con a = b · φ: ángulo formado por las tangentes de un punto de la elipse a la Hire  = ángulo áureo/5</p>
         <p>Con a = b · φ: las cúspides de la paralela a la elipse descrita por la normal recorren la evoluta de la elipse.</p>
         <p>Con a = b · φ: la astroide envolvente de familia de elipses es tangente a la elipse en extremos de latus rectum.</p>
         <p>Con a = b · φ: en Hipotrocoide 2 y Osculatriz, el diámetro de la circunferencia osculatriz es la altura del triángulo magenta.</p>
@@ -258,13 +258,13 @@
         <p>Con a = b · φ: el eje horizontal de la evoluta mide 2b y el vertical mide 2a. Los vértices de la elipse se unen con líneas a 45º con las cúspides de la astroide envolvente de las normales.</p>
         <p>Con a = b · φ: la hipotenusa del triángulo rectángulo de catetos a y O-directriz (es decir, (a^2)/c) es igual a la longitud de la vara del elipsógrafo de Proclo / Arquímedes.</p>
         <p>Con a = c · φ: ε = 1/φ, ángulo formado por las tangentes de un punto de la elipse a la Hire = ángulo áureo/10</p>
-		<p>Con a = c · φ: la circunferencia osculatriz del vértice del eje mayor tiene radio = c</p>
-		<p>Con a = c · φ: je menor del rombo = 2a, eje mayor del rombo = eje menor · φ, 2 a = latus rectum · φ</p>
+	<p>Con a = c · φ: la circunferencia osculatriz del vértice del eje mayor tiene radio = c</p>
+	<p>Con a = c · φ: je menor del rombo = 2a, eje mayor del rombo = eje menor · φ, 2 a = latus rectum · φ</p>
         <p>Con c = b · φ: las cúspides de la curva trazada por la normal con radio a pertenecen a la vez a la evoluta de las osculatrices y a la elipse.</p>
-		<p>Con c = 2b: ángulo formado por las tangentes de un punto de la elipse a la Hire = 45°</p>
+	<p>Con c = 2b: ángulo formado por las tangentes de un punto de la elipse a la Hire = 45°</p>
         <p>Con a = 3b: ángulo formado por las tangentes de un punto de la elipse a la Hire  = 60°; triángulo equilátero; la elipse pasa por A y B.</p>	
         <p>Con a = b · √2, es decir, con b = c: ε = cos 45</p>
-		<p>Con a = b · √2: la osculatriz en el vértice del eje mayor tiene radio a/2</p>
+	<p>Con a = b · √2: la osculatriz en el vértice del eje mayor tiene radio a/2</p>
         <p>Con a = b · √2: las cúspides superior e inferior de la evoluta distan 2b entre ellas y las cúspides izquierda y derecha distan a entre ellas.</p>
         <p>Con a = b · √2: la proporción entre los ejes de rombo es √2. Es el único caso de igualdad de proporciones entre ambas construcciones: diámetros de la elipse y rombo.</p>     
         <p>Con a = 1.5b: c = (4/3)a, c = ( a + b) / 2.</p>
@@ -1030,7 +1030,7 @@
   </div>
 </div>
 <footer style="text-align: center; padding: 30px; font-family: sans-serif; opacity: 0.8; line-height: 1.6;">
-    <p><strong>EllipseLab</strong> © 2026 por <strong>Manuel Sanmartín Fernández</strong></p>
+    <p><strong>ElipseLab</strong> © 2026 por <strong>Manuel Sanmartín Fernández</strong></p>
     <p><small>Laboratorio interactivo desarrollado con asistencia de IA</small></p>
     <p>
         <small>
@@ -1122,6 +1122,6 @@
 
   });
 })();
-</script>	
+</script>
 </body>
 </html>
