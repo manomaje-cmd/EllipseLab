@@ -114,18 +114,23 @@
 
             if (nDist > 1e-9) {
                 const ux = nxRaw / nDist, uy = nyRaw / nDist;
-                const extAux = Math.max(a, b) * 2.2;
-                if (state.offsetNormal === undefined) state.offsetNormal = -(b * b) / a;
-                const off = state.offsetNormal;
+                
+                // IGUALAMOS LONGITUDES:
+                const largo = a * 1.5; 
+                const P2 = { x: P.x - ux * largo, y: P.y - uy * largo }; 
+                const P1_ext = { x: P.x + ux * (largo / 4), y: P.y + uy * (largo / 4) };
 
                 // 1) Línea normal
                 ctx.save();
+                ctx.setLineDash([12, 4, 2, 4]); 
+                ctx.lineCap = "round";
                 ctx.strokeStyle = normalColor;
                 ctx.lineWidth = vp.dpr * 1.2;
                 ctx.globalAlpha = 0.75 * fShow;
+
                 ctx.beginPath();
-                ctx.moveTo(vp.X(P.x - ux * extAux), vp.Y(P.y - uy * extAux));
-                ctx.lineTo(vp.X(P.x + ux * extAux), vp.Y(P.y + uy * extAux));
+                ctx.moveTo(vp.X(P1_ext.x), vp.Y(P1_ext.y));
+                ctx.lineTo(vp.X(P2.x), vp.Y(P2.y));
                 ctx.stroke();
                 ctx.restore();
 
