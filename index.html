@@ -1073,6 +1073,7 @@
     let playing = false;
     let speed = 1;
     let loop = false;
+    let loopCount = 0;   // ← NUEVO: cuenta las vueltas completadas
 
     function step(){
       if (!playing) return;
@@ -1081,7 +1082,9 @@
 
       if (lab.state.t > 1){
         if (loop){
-          lab.state.t = 0;
+          loopCount++;                          // ← completamos una vuelta
+          lab.state.isFirstLoop = false;        // ← a partir de aquí, no es la primera
+          lab.state.t = 0.25;                   // ← volvemos a 0.25t, no a 0
         } else {
           lab.state.t = 1;
           playing = false;
@@ -1099,6 +1102,8 @@
       if (lab.state.t >= 0.999) {
         lab.state.t = 0;
         timeline.value = 0;
+        loopCount = 0;                          // ← resetear contador
+        lab.state.isFirstLoop = true;           // ← volvemos a ser primera vuelta
         lab.syncPanel();
       }
 
@@ -1119,6 +1124,10 @@
     document.querySelectorAll('.speedBtn').forEach(btn => {
       btn.onclick = () => speed = parseFloat(btn.dataset.speed);
     });
+
+    // Inicializar el flag en el state
+    lab.state.isFirstLoop = true;
+    lab.state.loopCount = 0;
 
   });
 })();
